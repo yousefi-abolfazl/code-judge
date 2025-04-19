@@ -1,0 +1,23 @@
+app:
+  name: "code-judge"
+  env: "development"
+  port: 8080
+  secret_key: "your-secret-key-for-jwt"
+
+database:
+  host: "localhost"
+  port: 5432
+  username: "yousef"
+  password: "code-judge123"
+  name: "code_judge"
+  sslmode: "disable"
+
+runner:
+  docker_image: "golang:1.21-alpine"
+  timeout: 10
+  memory_limit: 512
+  cpu_limit: 1
+
+admin:
+  default_username: "admin"
+  default_password: "admin_password"
