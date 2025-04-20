@@ -1,0 +1,110 @@
+{{/* templates/problems.html */}}
+{{ define "content" }}
+  <style>
+    /* Page‑specific styles */
+    .search-input { max-width: 400px; }
+    .table thead {
+      background: linear-gradient(135deg, #1d3557, #457b9d);
+      color: #fff;
+    }
+    .table tbody tr:hover {
+      background-color: #e9ecef;
+    }
+    .pagination .page-link {
+      color: #1d3557;
+    }
+    .pagination .page-item.active .page-link {
+      background-color: #1d3557;
+      border-color: #1d3557;
+    }
+  </style>
+
+  <!-- Header + Search -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Problem List</h2>
+    <form class="d-flex" method="GET" action="/problems">
+      <input
+        class="form-control me-2 search-input"
+        type="search"
+        name="q"
+        placeholder="Search problems…"
+        value="{{ .Query }}"
+      />
+      <button class="btn btn-outline-secondary" type="submit">Search</button>
+    </form>
+  </div>
+
+  <!-- Problems Table -->
+  <div class="table-responsive bg-white shadow-sm rounded">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Title</th>
+          <th>Difficulty</th>
+          <th>Submitted</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range $idx, $p := .Problems }}
+        <tr>
+          <td>{{ add $idx 1 }}</td>
+          <td>{{ $p.Title }}</td>
+          <td>
+            <span class="badge
+              {{- if eq $p.Difficulty "Easy" }}bg-success
+              {{- else if eq $p.Difficulty "Medium" }}bg-warning
+              {{- else }}bg-danger
+              {{- end }}">
+              {{ $p.Difficulty }}
+            </span>
+          </td>
+          <td>{{ $p.SubmissionCount }}</td>
+          <td>
+            <a href="/problems/{{ $p.ID }}" class="btn btn-sm btn-primary">
+              View
+            </a>
+          </td>
+        </tr>
+        {{ else }}
+        <tr>
+          <td colspan="5" class="text-center py-4">No problems found.</td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-center mb-0">
+      {{ if gt .Page 1 }}
+      <li class="page-item">
+        <a
+          class="page-link"
+          href="/problems?page={{ sub .Page 1 }}{{ if .Query }}&q={{ .Query }}{{ end }}"
+          aria-label="Previous"
+        >‹</a>
+      </li>
+      {{ end }}
+      {{ range $i := .Pages }}
+      <li class="page-item {{ if eq $.Page $i }}active{{ end }}">
+        <a
+          class="page-link"
+          href="/problems?page={{ $i }}{{ if $.Query }}&q={{ $.Query }}{{ end }}"
+        >{{ $i }}</a>
+      </li>
+      {{ end }}
+      {{ if lt .Page .TotalPages }}
+      <li class="page-item">
+        <a
+          class="page-link"
+          href="/problems?page={{ add .Page 1 }}{{ if .Query }}&q={{ .Query }}{{ end }}"
+          aria-label="Next"
+        >›</a>
+      </li>
+      {{ end }}
+    </ul>
+  </nav>
+{{ end }}

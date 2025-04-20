@@ -1,68 +1,62 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Login • CodeJudge</title>
-  <!-- Bootstrap CSS -->
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  />
+{{/* templates/login.html */}}
+{{ define "content" }}
   <style>
-    body, html {
-      height: 100%;
-      margin: 0;
-    }
+    /* Full‑screen gradient background and centering */
     .hero-form {
-      height: 100%;
+      height: 100vh;
       background: linear-gradient(135deg, #1d3557, #457b9d);
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .card {
+    /* Card styling */
+    .hero-form .card {
       border: none;
       border-radius: 1rem;
       box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
       max-width: 400px;
       width: 100%;
     }
-    .card-title {
+    .hero-form .card-title {
       font-weight: 700;
       color: #1d3557;
     }
-    .form-control:focus {
+    /* Input focus and button colors */
+    .hero-form .form-control:focus {
       box-shadow: none;
       border-color: #457b9d;
     }
-    .btn-primary {
+    .hero-form .btn-primary {
       background-color: #1d3557;
       border-color: #1d3557;
     }
-    .btn-primary:hover {
+    .hero-form .btn-primary:hover {
       background-color: #16344a;
       border-color: #16344a;
     }
-    .link-register {
+    /* Sign‑up link style */
+    .hero-form .link-register {
       color: #457b9d;
       text-decoration: none;
     }
-    .link-register:hover {
+    .hero-form .link-register:hover {
       text-decoration: underline;
     }
   </style>
-</head>
-<body>
+
   <div class="hero-form">
     <div class="card p-4">
       <h2 class="card-title text-center mb-4">Welcome Back</h2>
-      <form>
+      <form method="POST" action="/login">
+        {{ if .CSRFToken }}
+          <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+        {{ end }}
         <div class="form-floating mb-3">
           <input
             type="text"
             class="form-control"
             id="username"
+            name="username"
             placeholder="Username or Email"
             required
           />
@@ -73,6 +67,7 @@
             type="password"
             class="form-control"
             id="password"
+            name="password"
             placeholder="Password"
             required
           />
@@ -84,12 +79,8 @@
       </form>
       <div class="text-center">
         <span>Don't have an account?</span>
-        <a href="register.html" class="link-register fw-medium">Sign Up</a>
+        <a href="/register" class="link-register fw-medium">Sign Up</a>
       </div>
     </div>
   </div>
-
-  <!-- Bootstrap JS Bundle -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+{{ end }}
