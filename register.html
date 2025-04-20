@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Register • CodeJudge</title>
+  <!-- Bootstrap CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    body, html {
+      height: 100%;
+      margin: 0;
+    }
+    .hero-form {
+      height: 100%;
+      background: linear-gradient(135deg, #1d3557, #457b9d);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      border: none;
+      border-radius: 1rem;
+      box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
+      max-width: 420px;
+      width: 100%;
+    }
+    .card-title {
+      font-weight: 700;
+      color: #1d3557;
+    }
+    .form-control:focus {
+      box-shadow: none;
+      border-color: #457b9d;
+    }
+    .btn-success {
+      background-color: #2a9d8f;
+      border-color: #2a9d8f;
+    }
+    .btn-success:hover {
+      background-color: #237c6b;
+      border-color: #237c6b;
+    }
+    .link-login {
+      color: #457b9d;
+      text-decoration: none;
+    }
+    .link-login:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="hero-form">
+    <div class="card p-4">
+      <h2 class="card-title text-center mb-4">Create an Account</h2>
+      <form>
+        <div class="form-floating mb-3">
+          <input
+            type="text"
+            class="form-control"
+            id="username"
+            placeholder="Create a username"
+            required
+          />
+          <label for="username">Username</label>
+        </div>
+        <div class="form-floating mb-3">
+          <input
+            type="email"
+            class="form-control"
+            id="email"
+            placeholder="name@example.com"
+            required
+          />
+          <label for="email">Email address</label>
+        </div>
+        <div class="form-floating mb-3">
+          <input
+            type="password"
+            class="form-control"
+            id="password"
+            placeholder="Password"
+            required
+          />
+          <label for="password">Password</label>
+        </div>
+        <div class="form-floating mb-4">
+          <input
+            type="password"
+            class="form-control"
+            id="confirm-password"
+            placeholder="Confirm Password"
+            required
+          />
+          <label for="confirm-password">Confirm Password</label>
+        </div>
+        <button class="btn btn-success w-100 py-2 mb-3" type="submit">
+          Sign Up
+        </button>
+      </form>
+      <div class="text-center">
+        <span>Already have an account?</span>
+        <a href="login.html" class="link-login fw-medium">Log In</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
