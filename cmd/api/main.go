@@ -7,16 +7,17 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+
+	"github.com/yousefi-abolfazl/code-judge/internal/handlers"
 	"github.com/yousefi-abolfazl/code-judge/internal/middleware"
 	"github.com/yousefi-abolfazl/code-judge/internal/models"
 	"github.com/yousefi-abolfazl/code-judge/internal/repository"
 	"github.com/yousefi-abolfazl/code-judge/internal/service"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 func main() {
-
 	configPath := flag.String("config", "./config/config.yaml", "path to config file")
 	listenAddr := flag.String("listen", "", "address to listen on")
 	flag.Parse()
@@ -24,9 +25,8 @@ func main() {
 	viper.SetConfigFile(*configPath)
 	err := viper.ReadInConfig()
 	if err != nil {
-		log.Feralf("Failed to run migrations: %s", err)
+		log.Fatalf("Error reading config file: %s", err)
 	}
-
 	if *listenAddr != "" {
 		viper.Set("app.port", *listenAddr)
 	}
@@ -65,11 +65,11 @@ func main() {
 	authorized := r.Group("/api")
 	authorized.Use(middleware.AuthMiddleware(viper.GetString("app.secret_key")))
 	{
-		// user
+		//user
 		admin := authorized.Group("/admin")
 		admin.Use(middleware.AdminMiddleware())
 		{
-			// admin
+			//admin
 		}
 	}
 
@@ -82,6 +82,6 @@ func main() {
 
 	log.Printf("Server starting on port %s", port)
 	if err := r.Run(port); err != nil {
-		log.Feralf("Failed to start server: %s", err)
+		log.Fatalf("Failed to start server: %s", err)
 	}
 }
