@@ -26,7 +26,7 @@ func (s *AuthService) Register(username, password string) (*models.User, error) 
 	if err == nil && existingUser != nil {
 		return nil, errors.New("username already exists")
 	}
-
+	
 	user := &models.User{
 		Username: username,
 		Password: password,
@@ -50,7 +50,7 @@ func (s *AuthService) Login(username, password string) (string, error) {
 	}
 
 	if !user.CheckPassword(password) {
-		return "", errors.New("Invalid username or password")
+		return "", errors.New("invalid username or password")
 	}
 
 	token, err := auth.GenerateToken(user, s.jwtSecret)

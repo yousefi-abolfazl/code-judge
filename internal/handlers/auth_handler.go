@@ -4,10 +4,11 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yousefi-abolfazl/code-judge/internal/service"
 )
 
 type AuthHandler struct {
-	AuthService *sevice.AuthService
+	authService *service.AuthService
 }
 
 func NewAuthHandler(authService *service.AuthService) *AuthHandler {
@@ -40,29 +41,30 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"massage": "User registered successfully",
+		"message": "User registered successfully",
 		"user": gin.H{
-			"id": user.ID,
+			"id":       user.ID,
 			"username": user.Username,
-			"role": user.Role,
+			"role":     user.Role,
 		},
 	})
+}
 
-	func (h *AuthHandler) Login(c *gin.Context) {
-		var req LoginRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-	
-		token, err := h.authService.Login(req.Username, req.Password)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-			return
-		}
-	
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Login successful",
-			"token":   token,
-		})
+func (h *AuthHandler) Login(c *gin.Context) {
+	var req LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	token, err := h.authService.Login(req.Username, req.Password)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Login successful",
+		"token":   token,
+	})
 }
