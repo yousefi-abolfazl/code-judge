@@ -11,7 +11,7 @@ import (
 func main() {
 	r := gin.Default()
 
-	// 1) register template helpers
+	// Template helpers
 	r.SetFuncMap(template.FuncMap{
 		"add": func(a, b int) int { return a + b },
 		"sub": func(a, b int) int { return a - b },
@@ -30,25 +30,18 @@ func main() {
 	})
 	r.LoadHTMLGlob("templates/*")
 
-	// 2) define *all* routes *before* starting the server
+	// ——— Define ALL routes here ———
 
-	// Home
 	r.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "base.html", gin.H{
-			"Title": "Home",
-		})
+		c.HTML(http.StatusOK, "base.html", gin.H{"Title": "Home"})
 	})
 
-	// Login (GET + POST)
 	r.GET("/login", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "base.html", gin.H{
-			"Title": "Login",
-		})
+		c.HTML(http.StatusOK, "base.html", gin.H{"Title": "Login"})
 	})
 	r.POST("/login", func(c *gin.Context) {
-		user := c.PostForm("username")
-		pass := c.PostForm("password")
-		if user == "admin" && pass == "password" {
+		// fake auth
+		if c.PostForm("username") == "admin" && c.PostForm("password") == "password" {
 			c.Redirect(http.StatusFound, "/profile")
 		} else {
 			c.HTML(http.StatusUnauthorized, "base.html", gin.H{
@@ -58,29 +51,23 @@ func main() {
 		}
 	})
 
-	// Register (GET + POST)
 	r.GET("/register", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "base.html", gin.H{
-			"Title": "Register",
-		})
+		c.HTML(http.StatusOK, "base.html", gin.H{"Title": "Register"})
 	})
 	r.POST("/register", func(c *gin.Context) {
-		// TODO: actually create user
 		c.Redirect(http.StatusFound, "/login")
 	})
 
-	// Problems list
 	r.GET("/problems", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "base.html", gin.H{
 			"Title":      "All Problems",
-			"Problems":   []any{}, // replace with your slice
+			"Problems":   []any{},
 			"Page":       1,
 			"TotalPages": 1,
 			"Query":      c.Query("q"),
 		})
 	})
 
-	// Problem details
 	r.GET("/problems/:id", func(c *gin.Context) {
 		id := c.Param("id")
 		c.HTML(http.StatusOK, "base.html", gin.H{
@@ -88,7 +75,7 @@ func main() {
 			"Problem": gin.H{
 				"ID":          id,
 				"Title":       "Sample Problem",
-				"Statement":   "// problem text here",
+				"Statement":   "// ...",
 				"InputSpec":   "…",
 				"OutputSpec":  "…",
 				"Difficulty":  "Easy",
@@ -101,15 +88,13 @@ func main() {
 		})
 	})
 
-	// My submissions
 	r.GET("/submissions", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "base.html", gin.H{
 			"Title":       "My Submissions",
-			"Submissions": []any{}, // replace with real data
+			"Submissions": []any{},
 		})
 	})
 
-	// Profile
 	r.GET("/profile", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "base.html", gin.H{
 			"Title": "Profile",
@@ -118,6 +103,6 @@ func main() {
 		})
 	})
 
-	// 3) now *finally* start the server once
+	// ——— Only ONE r.Run call, at the very end ———
 	r.Run(":8080")
 }
