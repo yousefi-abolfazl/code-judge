@@ -1,0 +1,42 @@
+{{/* templates/submissions.html */}}
+{{ define "content" }}
+  <h2 class="mb-4">Your Submission History</h2>
+  <div class="table-responsive bg-white shadow-sm rounded">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Problem</th>
+          <th>Lang</th>
+          <th>Status</th>
+          <th>Time (ms)</th>
+          <th>Mem (KB)</th>
+          <th>Submitted At</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range $idx, $s := .Submissions }}
+        <tr>
+          <td>{{ add $idx 1 }}</td>
+          <td><a href="/problems/{{ $s.ProblemID }}">{{ $s.ProblemTitle }}</a></td>
+          <td>{{ upper $s.Language }}</td>
+          <td>
+            <span class="badge
+              {{- if eq $s.Status "OK" }}bg-success
+              {{- else if eq $s.Status "Pending" }}bg-secondary
+              {{- else }}bg-danger
+              {{- end }}">
+              {{ $s.Status }}
+            </span>
+          </td>
+          <td>{{ $s.TimeMS }}</td>
+          <td>{{ $s.MemoryKB }}</td>
+          <td>{{ $s.CreatedAt.Format "2006-01-02 15:04:05" }}</td>
+        </tr>
+        {{ else }}
+        <tr><td colspan="7" class="text-center py-4">No submissions yet.</td></tr>
+        {{ end }}
+      </tbody>
+    </table>
+  </div>
+{{ end }}
