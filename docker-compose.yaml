@@ -1,0 +1,33 @@
+version: 'v2.34.0-desktop.1'
+services:
+  app:
+    image: code-judge-api
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    environment:
+      - DATABASE_URL=postgres://yousef:code-judge123@localhost:5432/code_judge?sslmode=disable
+      - JWT_SECRET=your-secret-key-for-jwt
+    depends_on:
+      - db
+    networks:
+      - app-network
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: yousef
+      POSTGRES_PASSWORD: code-judge123
+      POSTGRES_DB: code_judge
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+volumes:
+  db-data:
+networks:
+  app-network:
+    driver: bridge

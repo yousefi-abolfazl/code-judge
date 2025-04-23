@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/yousefi-abolfazl/code-judge/internal/auth"
-	"github.com/yousefi-abolfazl/online-judge/internal/models"
+	"github.com/yousefi-abolfazl/code-judge/internal/models"
 )
 
 func AuthMiddleware(secretKey string) gin.HandlerFunc {
