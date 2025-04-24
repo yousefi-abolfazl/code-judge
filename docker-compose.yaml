@@ -5,9 +5,9 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8080:80"
+      - "8080:8080"
     environment:
-      - DATABASE_URL=postgres://yousef:code-judge123@localhost:5432/code_judge?sslmode=disable
+      - DATABASE_URL=postgres://yousef:code-judge123@db:5432/code_judge?sslmode=disable
       - JWT_SECRET=your-secret-key-for-jwt
     depends_on:
       - db
