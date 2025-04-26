@@ -1,8 +1,8 @@
 services:
-  app:
-    image: code-judge-api
+  backend:
+    image: code-judge-backend
     build: 
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
@@ -13,6 +13,26 @@ services:
       - db
     networks:
       - app-network
+    volumes:
+      - ./backend/config:/app/config
+  
+  frontend:
+    image: code-judge-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "2020:2020"
+    environment:
+      - API_URL=http://backend:8080
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    volumes:
+      - ./frontend/templates:/app/templates
+      - ./frontend/static:/app/static
+  
   db:
     image: postgres:17
     environment:
@@ -23,8 +43,10 @@ services:
       - db-data:/var/lib/postgresql/data
     networks:
       - app-network
+
 volumes:
   db-data:
+
 networks:
   app-network:
     driver: bridge

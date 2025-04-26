@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/yousefi-abolfazl/code-judge/internal/service"
+	"github.com/yousefi-abolfazl/code-judge/backend/internal/service"
 )
 
 type AuthHandler struct {
@@ -20,6 +20,7 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 type RegisterRequest struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
+	Email    string `json:"email" binding:"required"`
 }
 
 type LoginRequest struct {
@@ -34,7 +35,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	user, err := h.authService.Register(req.Username, req.Password)
+	user, err := h.authService.Register(req.Username, req.Password, req.Email)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -45,6 +46,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		"user": gin.H{
 			"id":       user.ID,
 			"username": user.Username,
+			"email":    user.Email,
 			"role":     user.Role,
 		},
 	})

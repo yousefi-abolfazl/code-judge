@@ -10,11 +10,11 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"github.com/yousefi-abolfazl/code-judge/internal/handlers"
-	"github.com/yousefi-abolfazl/code-judge/internal/middleware"
-	"github.com/yousefi-abolfazl/code-judge/internal/models"
-	"github.com/yousefi-abolfazl/code-judge/internal/repository"
-	"github.com/yousefi-abolfazl/code-judge/internal/service"
+	"github.com/yousefi-abolfazl/code-judge/backend/internal/handlers"
+	"github.com/yousefi-abolfazl/code-judge/backend/internal/middleware"
+	"github.com/yousefi-abolfazl/code-judge/backend/internal/models"
+	"github.com/yousefi-abolfazl/code-judge/backend/internal/repository"
+	"github.com/yousefi-abolfazl/code-judge/backend/internal/service"
 )
 
 func main() {

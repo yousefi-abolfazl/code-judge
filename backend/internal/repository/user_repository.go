@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/yousefi-abolfazl/code-judge/internal/models"
+	"github.com/yousefi-abolfazl/code-judge/backend/internal/models"
 	"gorm.io/gorm"
 )
 
@@ -20,6 +20,15 @@ func (r *UserRepository) CreateUser(user *models.User) error {
 func (r *UserRepository) FindByUsername(username string) (*models.User, error) {
 	var user models.User
 	err := r.db.Where("username = ?", username).First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *UserRepository) FindByEmail(email string) (*models.User, error) {
+	var user models.User
+	err := r.db.Where("email = ?", email).First(&user).Error
 	if err != nil {
 		return nil, err
 	}
