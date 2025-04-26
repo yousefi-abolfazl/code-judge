@@ -1,0 +1,43 @@
+{{/* templates/index.html */}}
+{{ define "index" }}
+  <!-- Hero Section -->
+  <section class="hero text-center text-white"
+           style="background: linear-gradient(135deg, #1d3557, #457b9d);
+                  min-height:60vh; display:flex; align-items:center; justify-content:center;">
+    <div class="container">
+      <h1 class="display-4 mb-3">Welcome to CodeJudge</h1>
+      <p class="lead mb-4">Your go‑to platform for coding challenges, contests, and autojudging.</p>
+      <a href="/login" class="btn btn-light btn-lg me-2">Get Started</a>
+      <a href="/register" class="btn btn-outline-light btn-lg">Sign Up</a>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="py-5">
+    <div class="container">
+      <div class="row g-4 text-center">
+        <div class="col-md-4">
+          <div class="p-4 border rounded">
+            <div class="feature-icon mb-3">📝</div>
+            <h5>Browse Problems</h5>
+            <p>Explore hundreds of algorithmic challenges.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="p-4 border rounded">
+            <div class="feature-icon mb-3">🚀</div>
+            <h5>Fast Judging</h5>
+            <p>Submit code and get immediate feedback.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="p-4 border rounded">
+            <div class="feature-icon mb-3">📊</div>
+            <h5>Track Progress</h5>
+            <p>View your submission history and stats.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{{ end }}
