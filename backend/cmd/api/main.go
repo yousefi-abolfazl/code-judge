@@ -51,17 +51,25 @@ func main() {
 		log.Fatalf("Failed to run migrations: %s", err)
 	}
 
+	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
+	problemRepo := repository.NewProblemRepository(db)
+	submissionRepo := repository.NewSubmissionRepository(db)
 
+	// Initialize services
 	authService := service.NewAuthService(userRepo, viper.GetString("app.secret_key"))
 
+	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
+	runnerHandler := handlers.NewRunnerHandler(submissionRepo, problemRepo)
 
 	r := gin.Default()
 
+	// Public routes
 	r.POST("/api/auth/register", authHandler.Register)
 	r.POST("/api/auth/login", authHandler.Login)
 
+	// Authorized routes
 	authorized := r.Group("/api")
 	authorized.Use(middleware.AuthMiddleware(viper.GetString("app.secret_key")))
 	{
@@ -71,6 +79,14 @@ func main() {
 		{
 			//admin
 		}
+	}
+
+	// Internal API for runner service
+	internalAPI := r.Group("/internal")
+	internalAPI.Use(middleware.InternalAPIMiddleware(viper.GetString("runner.api_token")))
+	{
+		internalAPI.GET("/submissions/next", runnerHandler.GetNextSubmission)
+		internalAPI.PUT("/submissions/:id/result", runnerHandler.UpdateSubmissionResult)
 	}
 
 	port := viper.GetString("app.port")

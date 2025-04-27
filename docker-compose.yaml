@@ -19,6 +19,25 @@ services:
     volumes:
       - ./backend/config:/app/config
   
+  runner:
+    image: code-judge-runner
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.runner
+    command: ["./runner"]
+    environment:
+      - RUNNER_API_URL=http://backend:8080/internal
+      - RUNNER_API_TOKEN=runner-secret-token
+    depends_on:
+      - backend
+    restart: on-failure
+    networks:
+      - app-network
+    volumes:
+      - ./backend/config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner-temp:/tmp/runner
+  
   frontend:
     image: code-judge-frontend
     build:
@@ -55,6 +74,7 @@ services:
 
 volumes:
   db-data:
+  runner-temp:
 
 networks:
   app-network:
