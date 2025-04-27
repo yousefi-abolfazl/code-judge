@@ -1,7 +1,11 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -59,6 +63,94 @@ func main() {
 			"Path":   c.Request.URL.Path,
 			"ApiURL": apiURL,
 		})
+	})
+
+	r.POST("/register", func(c *gin.Context) {
+		// دریافت داده‌های فرم
+		username := c.PostForm("username")
+		email := c.PostForm("email")
+		password := c.PostForm("password")
+		confirmPassword := c.PostForm("confirm_password")
+
+		// بررسی یکسان بودن رمز عبور
+		if password != confirmPassword {
+			c.HTML(http.StatusBadRequest, "base.html", gin.H{
+				"Title":  "Register",
+				"Path":   c.Request.URL.Path,
+				"Error":  "Passwords do not match",
+				"ApiURL": apiURL,
+			})
+			return
+		}
+
+		// ساخت داده‌های JSON برای ارسال به API
+		requestBody, err := json.Marshal(map[string]string{
+			"username": username,
+			"email":    email,
+			"password": password,
+		})
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+				"Title":  "Register",
+				"Path":   c.Request.URL.Path,
+				"Error":  "Error processing your request",
+				"ApiURL": apiURL,
+			})
+			return
+		}
+
+		// ارسال درخواست به API بک‌اند
+		apiEndpoint := fmt.Sprintf("%s/api/auth/register", apiURL)
+		resp, err := http.Post(
+			apiEndpoint,
+			"application/json",
+			bytes.NewBuffer(requestBody),
+		)
+
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+				"Title":  "Register",
+				"Path":   c.Request.URL.Path,
+				"Error":  "Cannot connect to authentication service",
+				"ApiURL": apiURL,
+			})
+			return
+		}
+		defer resp.Body.Close()
+
+		// خواندن پاسخ API
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+				"Title":  "Register",
+				"Path":   c.Request.URL.Path,
+				"Error":  "Error reading response from server",
+				"ApiURL": apiURL,
+			})
+			return
+		}
+
+		// بررسی وضعیت پاسخ
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+			var errorResponse map[string]interface{}
+			json.Unmarshal(body, &errorResponse)
+
+			errorMsg := "Registration failed"
+			if errMsg, ok := errorResponse["error"]; ok {
+				errorMsg = fmt.Sprintf("%v", errMsg)
+			}
+
+			c.HTML(resp.StatusCode, "base.html", gin.H{
+				"Title":  "Register",
+				"Path":   c.Request.URL.Path,
+				"Error":  errorMsg,
+				"ApiURL": apiURL,
+			})
+			return
+		}
+
+		// ثبت‌نام موفق - هدایت به صفحه ورود
+		c.Redirect(http.StatusFound, "/login?registered=true")
 	})
 
 	r.GET("/problems", func(c *gin.Context) {

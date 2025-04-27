@@ -42,11 +42,24 @@
     .hero-form .link-login:hover {
       text-decoration: underline;
     }
+    /* Error message styling */
+    .alert-danger {
+      background-color: #f8d7da;
+      color: #721c24;
+      border-color: #f5c6cb;
+      margin-bottom: 20px;
+    }
   </style>
 
   <div class="hero-form">
     <div class="card p-4">
       <h2 class="card-title text-center mb-4">Create an Account</h2>
+      {{ if .Error }}
+      <div class="alert alert-danger" role="alert">
+        {{ .Error }}
+      </div>
+      {{ end }}
+      
       <form method="POST" action="/register">
         {{ if .CSRFToken }}
           <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
