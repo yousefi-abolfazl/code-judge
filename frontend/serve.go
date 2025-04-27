@@ -50,10 +50,12 @@ func main() {
 	})
 
 	r.GET("/login", func(c *gin.Context) {
+		registered := c.Query("registered") == "true"
 		c.HTML(http.StatusOK, "base.html", gin.H{
-			"Title":  "Login",
-			"Path":   c.Request.URL.Path,
-			"ApiURL": apiURL,
+			"Title":      "Login",
+			"Path":       c.Request.URL.Path,
+			"ApiURL":     apiURL,
+			"Registered": registered,
 		})
 	})
 
@@ -66,13 +68,11 @@ func main() {
 	})
 
 	r.POST("/register", func(c *gin.Context) {
-		// دریافت داده‌های فرم
 		username := c.PostForm("username")
 		email := c.PostForm("email")
 		password := c.PostForm("password")
 		confirmPassword := c.PostForm("confirm_password")
 
-		// بررسی یکسان بودن رمز عبور
 		if password != confirmPassword {
 			c.HTML(http.StatusBadRequest, "base.html", gin.H{
 				"Title":  "Register",
@@ -83,7 +83,6 @@ func main() {
 			return
 		}
 
-		// ساخت داده‌های JSON برای ارسال به API
 		requestBody, err := json.Marshal(map[string]string{
 			"username": username,
 			"email":    email,
@@ -99,7 +98,6 @@ func main() {
 			return
 		}
 
-		// ارسال درخواست به API بک‌اند
 		apiEndpoint := fmt.Sprintf("%s/api/auth/register", apiURL)
 		resp, err := http.Post(
 			apiEndpoint,
@@ -118,7 +116,6 @@ func main() {
 		}
 		defer resp.Body.Close()
 
-		// خواندن پاسخ API
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			c.HTML(http.StatusInternalServerError, "base.html", gin.H{
@@ -130,7 +127,6 @@ func main() {
 			return
 		}
 
-		// بررسی وضعیت پاسخ
 		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 			var errorResponse map[string]interface{}
 			json.Unmarshal(body, &errorResponse)
@@ -149,8 +145,117 @@ func main() {
 			return
 		}
 
-		// ثبت‌نام موفق - هدایت به صفحه ورود
 		c.Redirect(http.StatusFound, "/login?registered=true")
+	})
+
+	r.POST("/login", func(c *gin.Context) {
+		username := c.PostForm("username")
+		password := c.PostForm("password")
+
+		if username == "" || password == "" {
+			c.HTML(http.StatusBadRequest, "base.html", gin.H{
+				"Title":  "Login",
+				"Path":   c.Request.URL.Path,
+				"Error":  "Username and password are required",
+				"ApiURL": apiURL,
+			})
+			return
+		}
+
+		requestBody, err := json.Marshal(map[string]string{
+			"username": username,
+			"password": password,
+		})
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+				"Title":  "Login",
+				"Path":   c.Request.URL.Path,
+				"Error":  "Error processing your request",
+				"ApiURL": apiURL,
+			})
+			return
+		}
+
+		apiEndpoint := fmt.Sprintf("%s/api/auth/login", apiURL)
+		resp, err := http.Post(
+			apiEndpoint,
+			"application/json",
+			bytes.NewBuffer(requestBody),
+		)
+
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+				"Title":  "Login",
+				"Path":   c.Request.URL.Path,
+				"Error":  "Cannot connect to authentication service",
+				"ApiURL": apiURL,
+			})
+			return
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+				"Title":  "Login",
+				"Path":   c.Request.URL.Path,
+				"Error":  "Error reading response from server",
+				"ApiURL": apiURL,
+			})
+			return
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			var errorResponse map[string]interface{}
+			json.Unmarshal(body, &errorResponse)
+
+			errorMsg := "Login failed. Invalid username or password."
+			if errMsg, ok := errorResponse["error"]; ok {
+				errorMsg = fmt.Sprintf("%v", errMsg)
+			}
+
+			c.HTML(resp.StatusCode, "base.html", gin.H{
+				"Title":  "Login",
+				"Path":   c.Request.URL.Path,
+				"Error":  errorMsg,
+				"ApiURL": apiURL,
+			})
+			return
+		}
+
+		var loginResponse map[string]interface{}
+		if err := json.Unmarshal(body, &loginResponse); err != nil {
+			c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+				"Title":  "Login",
+				"Path":   c.Request.URL.Path,
+				"Error":  "Error processing server response",
+				"ApiURL": apiURL,
+			})
+			return
+		}
+
+		token, ok := loginResponse["token"].(string)
+		if !ok {
+			c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+				"Title":  "Login",
+				"Path":   c.Request.URL.Path,
+				"Error":  "Invalid authentication token received",
+				"ApiURL": apiURL,
+			})
+			return
+		}
+
+		c.SetCookie(
+			"auth_token",
+			token,
+			3600*24,
+			"/",
+			"",
+			false,
+			true,
+		)
+
+		c.Redirect(http.StatusFound, "/problems")
 	})
 
 	r.GET("/problems", func(c *gin.Context) {
