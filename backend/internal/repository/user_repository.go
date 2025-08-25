@@ -9,8 +9,33 @@ type UserRepository struct {
 	db *gorm.DB
 }
 
+type UserStats struct {
+	TotalSubmissions      int64 `json:"total_submissions"`
+	SuccessfulSubmissions int64 `json:"successful_submissions"`
+}
+
 func NewUserRepository(db *gorm.DB) *UserRepository {
 	return &UserRepository{db: db}
+}
+
+func (r *UserRepository) GetUserStats(userID uint) (*UserStats, error) {
+	var stats UserStats
+
+	// Get total submissions
+	err := r.db.Model(&models.Submission{}).Where("user_id = ?", userID).Count(&stats.TotalSubmissions).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Get successful submissions
+	err = r.db.Model(&models.Submission{}).
+		Where("user_id = ? AND result = ?", userID, models.ResultOK).
+		Count(&stats.SuccessfulSubmissions).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &stats, nil
 }
 
 func (r *UserRepository) CreateUser(user *models.User) error {
