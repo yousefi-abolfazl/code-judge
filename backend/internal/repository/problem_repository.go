@@ -74,9 +74,9 @@ func (r *ProblemRepository) GetAllProblems(page, pageSize int) ([]models.Problem
 		return nil, 0, err
 	}
 
-	// Get problems with pagination
+	// Get problems with pagination and preload owner info
 	offset := (page - 1) * pageSize
-	if err := r.db.Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&problems).Error; err != nil {
+	if err := r.db.Preload("Owner").Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&problems).Error; err != nil {
 		return nil, 0, err
 	}
 

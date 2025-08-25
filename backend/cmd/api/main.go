@@ -92,7 +92,12 @@ func main() {
 		admin := authorized.Group("/admin")
 		admin.Use(middleware.AdminMiddleware())
 		{
+			// User management
 			admin.PATCH("/users/:id/role", userHandler.UpdateUserRole)
+
+			// Problem management
+			admin.GET("/problems", problemHandler.GetAllProblems)
+			admin.PATCH("/problems/:id/status", problemHandler.UpdateProblemStatus)
 		}
 	}
 

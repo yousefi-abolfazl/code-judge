@@ -1,6 +1,8 @@
 package service
 
 import (
+	"errors"
+
 	"github.com/yousefi-abolfazl/code-judge/backend/internal/models"
 	"github.com/yousefi-abolfazl/code-judge/backend/internal/repository"
 )
@@ -40,4 +42,24 @@ func (s *ProblemService) GetProblemByID(id uint) (*models.Problem, error) {
 
 func (s *ProblemService) GetPublishedProblems(page, pageSize int) ([]models.Problem, int64, error) {
 	return s.problemRepo.GetPublishedProblems(page, pageSize)
+}
+
+func (s *ProblemService) PublishProblem(problemID uint) error {
+	problem, err := s.problemRepo.GetProblemByID(problemID)
+	if err != nil || problem == nil {
+		return errors.New("problem not found")
+	}
+	return s.problemRepo.PublishProblem(problemID)
+}
+
+func (s *ProblemService) UnpublishProblem(problemID uint) error {
+	problem, err := s.problemRepo.GetProblemByID(problemID)
+	if err != nil || problem == nil {
+		return errors.New("problem not found")
+	}
+	return s.problemRepo.UnpublishProblem(problemID)
+}
+
+func (s *ProblemService) GetAllProblems(page, pageSize int) ([]models.Problem, int64, error) {
+	return s.problemRepo.GetAllProblems(page, pageSize)
 }
