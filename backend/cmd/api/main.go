@@ -58,10 +58,12 @@ func main() {
 
 	// Initialize services
 	authService := service.NewAuthService(userRepo, viper.GetString("app.secret_key"))
+	problemService := service.NewProblemService(problemRepo)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	runnerHandler := handlers.NewRunnerHandler(submissionRepo, problemRepo)
+	problemHandler := handlers.NewProblemHandler(problemService)
 
 	r := gin.Default()
 
@@ -73,6 +75,10 @@ func main() {
 	authorized := r.Group("/api")
 	authorized.Use(middleware.AuthMiddleware(viper.GetString("app.secret_key")))
 	{
+		// Problems
+		authorized.POST("/problems", problemHandler.CreateProblem)
+		authorized.GET("/problems", problemHandler.GetPublishedProblems)
+		authorized.GET("/problems/:id", problemHandler.GetProblemByID)
 		//user
 		admin := authorized.Group("/admin")
 		admin.Use(middleware.AdminMiddleware())
