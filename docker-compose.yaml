@@ -1,62 +1,8 @@
-services:
-  backend:
-    image: code-judge-backend
-    build: 
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
-    environment:
-      - DATABASE_URL=postgres://yousef:code-judge123@db:5432/code_judge?sslmode=disable
-      - JWT_SECRET=your-secret-key-for-jwt
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: on-failure
+version: '3.8'
 
-    networks:
-      - app-network
-    volumes:
-      - ./backend/config:/app/config
-  
-  runner:
-    image: code-judge-runner
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.runner
-    command: ["./runner"]
-    environment:
-      - RUNNER_API_URL=http://backend:8080/internal
-      - RUNNER_API_TOKEN=runner-secret-token
-    depends_on:
-      - backend
-    restart: on-failure
-    networks:
-      - app-network
-    volumes:
-      - ./backend/config:/app/config
-      - /var/run/docker.sock:/var/run/docker.sock
-      - runner-temp:/tmp/runner
-  
-  frontend:
-    image: code-judge-frontend
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "2020:2020"
-    environment:
-      - API_URL=http://backend:8080
-    depends_on:
-      - backend
-    networks:
-      - app-network
-    volumes:
-      - ./frontend/templates:/app/templates
-      - ./frontend/static:/app/static
-  
+services:
   db:
-    image: postgres:17
+    image: postgres:16-alpine # Using a smaller alpine image
     environment:
       POSTGRES_USER: yousef
       POSTGRES_PASSWORD: code-judge123
@@ -70,7 +16,55 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+    restart: always
+
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["./code-judge", "serve", "--config", "./config/config.yaml"]
+    ports:
+      - "8888:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: on-failure
+
+  runner:
+    build:
+      context: ./backend # Runner now uses the same Dockerfile
+      dockerfile: Dockerfile
+      args: 
+        DOCKER_GID: ${DOCKER_GID:-1001}
+    command: ["./code-judge", "runner", "--config", "./config/config.yaml"]
+    depends_on:
+      - backend
+      - db # Runner might need to check problems, so better to depend on db too
+    networks:
+      - app-network
+    volumes:
+      # Mount docker sock to allow runner to create containers
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Named volume for temporary submission files
+      - runner-temp:/tmp/runner
+    restart: on-failure
+    security_opt:
+      - "label:disable"
+
+  # Frontend service remains the same
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "2020:2020"
+  #   depends_on:
+  #     - backend
+  #   networks:
+  #     - app-network
+  #   restart: on-failure
 
 volumes:
   db-data:

@@ -50,7 +50,13 @@ func (h *ProblemHandler) CreateProblem(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, problem)
+	fullProblem, err := h.problemService.GetProblemByID(problem.ID)
+	if err != nil {
+		c.JSON(http.StatusCreated, problem)
+		return
+	}
+
+	c.JSON(http.StatusCreated, fullProblem)
 }
 
 func (h *ProblemHandler) GetPublishedProblems(c *gin.Context) {

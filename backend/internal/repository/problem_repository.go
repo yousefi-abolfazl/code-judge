@@ -23,7 +23,7 @@ func (r *ProblemRepository) CreateProblem(problem *models.Problem) error {
 // GetProblemByID gets a problem by ID
 func (r *ProblemRepository) GetProblemByID(id uint) (*models.Problem, error) {
 	var problem models.Problem
-	if err := r.db.First(&problem, id).Error; err != nil {
+	if err := r.db.Preload("Owner").First(&problem, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
