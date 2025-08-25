@@ -3,9 +3,9 @@ package service
 import (
 	"errors"
 
-	"github.com/yousefi-abolfazl/code-judge/internal/auth"
-	"github.com/yousefi-abolfazl/code-judge/internal/models"
-	"github.com/yousefi-abolfazl/code-judge/internal/repository"
+	"github.com/yousefi-abolfazl/code-judge/backend/internal/auth"
+	"github.com/yousefi-abolfazl/code-judge/backend/internal/models"
+	"github.com/yousefi-abolfazl/code-judge/backend/internal/repository"
 	"gorm.io/gorm"
 )
 
@@ -21,15 +21,21 @@ func NewAuthService(userRepo *repository.UserRepository, jwtSecret string) *Auth
 	}
 }
 
-func (s *AuthService) Register(username, password string) (*models.User, error) {
+func (s *AuthService) Register(username, password, email string) (*models.User, error) {
 	existingUser, err := s.userRepo.FindByUsername(username)
 	if err == nil && existingUser != nil {
 		return nil, errors.New("username already exists")
 	}
-	
+
+	existingUser, err = s.userRepo.FindByEmail(email)
+	if err == nil && existingUser != nil {
+		return nil, errors.New("email already exists")
+	}
+
 	user := &models.User{
 		Username: username,
 		Password: password,
+		Email:    email,
 		Role:     models.RoleUser,
 	}
 

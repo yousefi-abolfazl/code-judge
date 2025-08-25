@@ -1,22 +1,24 @@
 app:
   name: "code-judge"
   env: "development"
-  port: 8080
+  port: :8080
   secret_key: "your-secret-key-for-jwt"
 
 database:
-  host: "db"
+  host: db
   port: 5432
-  username: "yousef"
-  password: "code-judge123"
-  name: "code_judge"
-  sslmode: "disable"
+  username: yousef
+  password: code-judge123
+  name: code_judge
+  sslmode: disable
 
 runner:
   docker_image: "golang:1.24-alpine"
   timeout: 10
   memory_limit: 512
   cpu_limit: 1
+  api_token: "runner-secret-token"
+  api_url: "http://backend:8080/internal"
 
 admin:
   default_username: "admin"

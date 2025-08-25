@@ -22,6 +22,7 @@ type Problem struct {
 	Status      ProblemStatus `gorm:"default:draft;not null" json:"status"`
 	PublishDate *time.Time    `json:"publish_date"`
 	OwnerID     uint          `json:"owner_id"`
+	Owner       User          `gorm:"foreignKey:OwnerID" json:"owner"`
 	CreatedAt   time.Time     `json:"created_at"`
 	UpdatedAt   time.Time     `json:"updated_at"`
 }
