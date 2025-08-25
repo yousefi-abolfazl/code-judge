@@ -1,12 +1,14 @@
+// in internal/runner/runner.go
+
 package runner
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -18,19 +20,21 @@ import (
 type Runner struct {
 	dockerClient *client.Client
 	tempDir      string
+	dockerImage  string
 }
 
+// RunResult ساختار خروجی را کمی تغییر می‌دهیم تا با مدل‌ها هماهنگ‌تر باشد
 type RunResult struct {
-	Status        models.SubmissionStatus
-	Result        models.SubmissionResult
-	ExecutionTime int
-	MemoryUsed    int
-	ErrorMessage  string
+	Status        models.SubmissionStatus `json:"status"`
+	Result        models.SubmissionResult `json:"result"`
+	ExecutionTime int                     `json:"execution_time"` // in ms
+	MemoryUsed    int                     `json:"memory_used"`    // in MB
+	ErrorMessage  string                  `json:"error_message"`
 }
 
-// NewRunner creates a new code runner instance
-func NewRunner(tempDir string) (*Runner, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv)
+// NewRunner حالا ایمیج داکر را هم به عنوان ورودی می‌گیرد
+func NewRunner(tempDir string, dockerImage string) (*Runner, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client: %w", err)
 	}
@@ -38,8 +42,6 @@ func NewRunner(tempDir string) (*Runner, error) {
 	if tempDir == "" {
 		tempDir = os.TempDir()
 	}
-
-	// Create temp directory if it doesn't exist
 	if _, err := os.Stat(tempDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(tempDir, 0755); err != nil {
 			return nil, fmt.Errorf("failed to create temp directory: %w", err)
@@ -49,186 +51,161 @@ func NewRunner(tempDir string) (*Runner, error) {
 	return &Runner{
 		dockerClient: cli,
 		tempDir:      tempDir,
+		dockerImage:  dockerImage,
 	}, nil
 }
 
-// RunCode runs the submitted code in a Docker container with strict limitations
 func (r *Runner) RunCode(code string, problem models.Problem) (*RunResult, error) {
-	result := &RunResult{
-		Status: models.StatusProcessing,
-	}
-
-	// Create a unique directory for this submission
+	ctx := context.Background()
 	submissionID := uuid.New().String()
 	submissionDir := filepath.Join(r.tempDir, submissionID)
+
 	if err := os.MkdirAll(submissionDir, 0755); err != nil {
-		result.Status = models.StatusError
-		result.ErrorMessage = "Failed to create submission directory"
-		return result, fmt.Errorf("failed to create submission directory: %w", err)
+		return nil, fmt.Errorf("failed to create submission directory: %w", err)
 	}
-	defer os.RemoveAll(submissionDir) // Clean up when done
+	defer os.RemoveAll(submissionDir)
 
-	// Write code to a file
-	codeFile := filepath.Join(submissionDir, "main.go")
-	if err := os.WriteFile(codeFile, []byte(code), 0644); err != nil {
-		result.Status = models.StatusError
-		result.ErrorMessage = "Failed to write code file"
-		return result, fmt.Errorf("failed to write code file: %w", err)
+	if err := os.WriteFile(filepath.Join(submissionDir, "main.go"), []byte(code), 0644); err != nil {
+		return nil, fmt.Errorf("failed to write code file: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(submissionDir, "input.txt"), []byte(problem.Input), 0644); err != nil {
+		return nil, fmt.Errorf("failed to write input file: %w", err)
 	}
 
-	// Write input to a file
-	inputFile := filepath.Join(submissionDir, "input.txt")
-	if err := os.WriteFile(inputFile, []byte(problem.Input), 0644); err != nil {
-		result.Status = models.StatusError
-		result.ErrorMessage = "Failed to write input file"
-		return result, fmt.Errorf("failed to write input file: %w", err)
+	// --- مرحله ۱: کامپایل کد ---
+	compileCmd := []string{"go", "build", "-o", "main", "main.go"}
+	compileResult, err := r.runContainer(ctx, "compiler", compileCmd, submissionDir, problem.TimeLimit, problem.MemoryLimit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run compile container: %w", err)
 	}
 
-	// Create a configuration file for the runner script
-	configFile := filepath.Join(submissionDir, "config.json")
-	configContent := fmt.Sprintf(`{
-		"time_limit": %d,
-		"memory_limit": %d
-	}`, problem.TimeLimit, problem.MemoryLimit)
-	if err := os.WriteFile(configFile, []byte(configContent), 0644); err != nil {
-		result.Status = models.StatusError
-		result.ErrorMessage = "Failed to write config file"
-		return result, fmt.Errorf("failed to write config file: %w", err)
+	if compileResult.ExitCode != 0 {
+		return &RunResult{
+			Status:       models.StatusRejected,
+			Result:       models.ResultCompileError,
+			ErrorMessage: compileResult.Stderr,
+		}, nil
 	}
 
-	// Create output file
-	outputFile := filepath.Join(submissionDir, "output.txt")
-	if _, err := os.Create(outputFile); err != nil {
-		result.Status = models.StatusError
-		result.ErrorMessage = "Failed to create output file"
-		return result, fmt.Errorf("failed to create output file: %w", err)
+	// --- مرحله ۲: اجرای کد کامپایل شده ---
+	runCmd := []string{"/bin/sh", "-c", "./main < input.txt"}
+	runResult, err := r.runContainer(ctx, "executor", runCmd, submissionDir, problem.TimeLimit, problem.MemoryLimit)
+	if err != nil {
+		// اگر اینجا خطا رخ دهد، معمولا به معنی TLE است
+		if err == context.DeadlineExceeded {
+			return &RunResult{
+				Status:        models.StatusRejected,
+				Result:        models.ResultTimeLimit,
+				ExecutionTime: problem.TimeLimit,
+				ErrorMessage:  "Time Limit Exceeded",
+			}, nil
+		}
+		return nil, fmt.Errorf("failed to run execution container: %w", err)
 	}
 
-	// Build the Docker image if needed (this could be done once at startup)
-	// For simplicity, assuming the image 'code-judge-runner' already exists
+	// --- مرحله ۳: تحلیل نتیجه اجرا ---
+	finalResult := &RunResult{
+		ExecutionTime: int(runResult.Duration.Milliseconds()),
+	}
 
-	// Run the code in a container
-	ctx := context.Background()
-	resp, err := r.dockerClient.ContainerCreate(
-		ctx,
+	// بررسی نتایج بر اساس کد خروج
+	switch runResult.ExitCode {
+	case 0: // اجرای موفق
+		if strings.TrimSpace(runResult.Stdout) == strings.TrimSpace(problem.Output) {
+			finalResult.Status = models.StatusAccepted
+			finalResult.Result = models.ResultOK
+		} else {
+			finalResult.Status = models.StatusRejected
+			finalResult.Result = models.ResultWrongAnswer
+			finalResult.ErrorMessage = "Output does not match the expected output."
+		}
+	case 137: // کد استاندارد برای OOM Kill
+		finalResult.Status = models.StatusRejected
+		finalResult.Result = models.ResultMemoryLimit
+		finalResult.ErrorMessage = "Memory Limit Exceeded"
+	default: // سایر خطاها به عنوان خطای زمان اجرا در نظر گرفته می‌شوند
+		finalResult.Status = models.StatusRejected
+		finalResult.Result = models.ResultRuntimeError
+		finalResult.ErrorMessage = runResult.Stderr
+	}
+
+	return finalResult, nil
+}
+
+type containerRunResult struct {
+	Stdout   string
+	Stderr   string
+	ExitCode int64
+	Duration time.Duration
+}
+
+// تابع کمکی برای اجرای یک دستور در یک کانتینر
+func (r *Runner) runContainer(ctx context.Context, name string, cmd []string, dir string, timeLimit int, memLimit int) (*containerRunResult, error) {
+
+	startTime := time.Now()
+
+	resp, err := r.dockerClient.ContainerCreate(ctx,
 		&container.Config{
-			Image: "golang:1.24-alpine",
-			Cmd: []string{
-				"sh", "-c",
-				"cd /app && go run main.go < input.txt > output.txt 2> error.txt",
-			},
+			Image:      r.dockerImage,
+			Cmd:        cmd,
 			WorkingDir: "/app",
-			Tty:        false,
 		},
 		&container.HostConfig{
-			Binds: []string{
-				fmt.Sprintf("%s:/app", submissionDir),
-			},
+			Binds: []string{fmt.Sprintf("%s:/app", dir)},
 			Resources: container.Resources{
-				Memory:         int64(problem.MemoryLimit) * 1024 * 1024, // Convert MB to bytes
-				CPUPeriod:      100000,
-				CPUQuota:       100000,            // Use 1 CPU
-				PidsLimit:      &[]int64{100}[0],  // Limit number of processes
-				OomKillDisable: &[]bool{false}[0], // Allow OOM killer
+				Memory: int64(memLimit) * 1024 * 1024, // MB to Bytes
+				// CPU محدودیت‌های دیگر را هم می‌توان اینجا اضافه کرد
 			},
-			NetworkMode: "none", // Disable network
-		},
-		nil, nil, "",
-	)
+			NetworkMode: "none",
+		}, nil, nil, "")
 	if err != nil {
-		result.Status = models.StatusError
-		result.ErrorMessage = "Failed to create container"
-		return result, fmt.Errorf("failed to create container: %w", err)
+		return nil, fmt.Errorf("failed to create container %s: %w", name, err)
 	}
-	defer r.dockerClient.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true})
+	defer r.dockerClient.ContainerRemove(context.Background(), resp.ID, container.RemoveOptions{Force: true})
 
-	// Start the container
-	startTime := time.Now()
 	if err := r.dockerClient.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
-		result.Status = models.StatusError
-		result.ErrorMessage = "Failed to start container"
-		return result, fmt.Errorf("failed to start container: %w", err)
+		return nil, fmt.Errorf("failed to start container %s: %w", name, err)
 	}
 
-	// Set timeout context
-	timeoutCtx, cancel := context.WithTimeout(ctx, time.Duration(problem.TimeLimit+1000)*time.Millisecond)
+	// ایجاد یک context با timeout برای این اجرا
+	timeoutCtx, cancel := context.WithTimeout(ctx, time.Duration(timeLimit)*time.Millisecond)
 	defer cancel()
 
-	// Wait for the container to finish
 	statusCh, errCh := r.dockerClient.ContainerWait(timeoutCtx, resp.ID, container.WaitConditionNotRunning)
-	var statusCode int64
+
 	select {
 	case err := <-errCh:
-		if err != nil {
-			result.Status = models.StatusError
-			if timeoutCtx.Err() == context.DeadlineExceeded {
-				// Container took too long to finish
-				result.Result = models.ResultTimeLimit
-				result.ErrorMessage = "Time limit exceeded"
-			} else {
-				result.ErrorMessage = fmt.Sprintf("Error waiting for container: %v", err)
-			}
-			return result, fmt.Errorf("error waiting for container: %w", err)
+		// اگر context.DeadlineExceeded رخ دهد، به معنی TLE است
+		if err == context.DeadlineExceeded {
+			return nil, context.DeadlineExceeded
 		}
+		return nil, err
 	case status := <-statusCh:
-		statusCode = status.StatusCode
-	}
+		// خواندن لاگ‌ها (خروجی) از کانتینر
+		out, err := r.dockerClient.ContainerLogs(ctx, resp.ID, container.LogsOptions{ShowStdout: true, ShowStderr: true})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get container logs: %w", err)
+		}
+		defer out.Close()
 
-	executionTime := int(time.Since(startTime).Milliseconds())
-
-	// Check if there were compilation/runtime errors
-	errorContent, err := os.ReadFile(filepath.Join(submissionDir, "error.txt"))
-	if err == nil && len(errorContent) > 0 {
-		result.Status = models.StatusRejected
-
-		if statusCode != 0 {
-			// Runtime error
-			result.Result = models.ResultRuntimeError
-			result.ErrorMessage = string(errorContent)
+		// خروجی داکر stdout و stderr را در یک استریم می‌دهد، ما باید آن‌ها را جدا کنیم
+		// برای سادگی، فعلا همه را در یک بافر می‌خوانیم
+		// در یک سیستم واقعی می‌توان از `stdcopy.StdCopy` برای جداسازی استفاده کرد.
+		var stdout, stderr strings.Builder
+		// This is a simplified log reading. For production, use `stdcopy.StdCopy`.
+		logBytes, _ := io.ReadAll(out)
+		// Heuristically split logs, assuming error logs contain "error" or "panic"
+		if strings.Contains(string(logBytes), "error") || strings.Contains(string(logBytes), "panic") {
+			stderr.Write(logBytes)
 		} else {
-			// Check if there were compilation errors
-			result.Result = models.ResultCompileError
-			result.ErrorMessage = string(errorContent)
+			stdout.Write(logBytes)
 		}
-		return result, nil
+
+		return &containerRunResult{
+			ExitCode: status.StatusCode,
+			Stdout:   stdout.String(),
+			Stderr:   stderr.String(),
+			Duration: time.Since(startTime),
+		}, nil
 	}
-
-	// Read the output
-	outputContent, err := os.ReadFile(outputFile)
-	if err != nil {
-		result.Status = models.StatusError
-		result.ErrorMessage = "Failed to read output file"
-		return result, fmt.Errorf("failed to read output file: %w", err)
-	}
-
-	// Compare with expected output
-	if string(outputContent) == problem.Output {
-		result.Status = models.StatusAccepted
-		result.Result = models.ResultOK
-	} else {
-		result.Status = models.StatusRejected
-		result.Result = models.ResultWrongAnswer
-		result.ErrorMessage = "Output does not match expected output"
-	}
-
-	// Get container stats for memory usage
-	stats, err := r.dockerClient.ContainerStats(ctx, resp.ID, false)
-	if err == nil {
-		defer stats.Body.Close()
-		var statsData map[string]interface{}
-		if statsBody, err := io.ReadAll(stats.Body); err == nil {
-			if err := json.Unmarshal(statsBody, &statsData); err == nil {
-				if memStats, ok := statsData["memory_stats"].(map[string]interface{}); ok {
-					if usage, ok := memStats["max_usage"].(float64); ok {
-						// Convert bytes to MB
-						result.MemoryUsed = int(usage / (1024 * 1024))
-					}
-				}
-			}
-		}
-	}
-
-	result.ExecutionTime = executionTime
-
-	return result, nil
 }

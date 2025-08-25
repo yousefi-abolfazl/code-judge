@@ -40,8 +40,13 @@ func main() {
 		logger.Fatal("API token is required in config")
 	}
 
+	dockerImage := viper.GetString("runner.docker_image")
+	if dockerImage == "" {
+		logger.Fatal("Docker image is required in config")
+	}
+
 	// Create runner
-	r, err := runner.NewRunner(*tempDir)
+	r, err := runner.NewRunner(*tempDir, dockerImage)
 	if err != nil {
 		logger.Fatalf("Failed to create runner: %s", err)
 	}
